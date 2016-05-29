@@ -1,0 +1,8 @@
+Package: mfcc
+Version: 1.0
+Architecture: amd64
+Maintainer: Raiza Arteman and Willian Souza 
+Homepage: http://www.comp.uems.br/
+Installed-Size: 33136
+Depends: libc6, libasound2
+Description: Reconhecimento de palavras isoladas com extração de caracerisicas MFCC
