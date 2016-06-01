@@ -21,67 +21,16 @@ unsigned int blocknumber = 0;
 
 /*Arquivo atualmente aberto*/
 static FILE *f = NULL;
-/*Conteúdo do arquivo */
-static void *f_buf = NULL;
 /*cabeçalho WAVE*/
 static char header[45] = "RIFF1024WAVEfmt 10241212102410241212data1024";
 
-unsigned int read_pcm(void **buffer)
-{
-	unsigned int data_size = *((int *)f_buf + 10);
-	*buffer = malloc(data_size);
-	memcpy(*buffer, (char *)f_buf + 44, data_size);
-	return data_size;
-}
 
-int write_pcm(const void *buffer, const unsigned int size, const char *path)
-{
-	FILE *file = NULL;
-
-	if (path != NULL)
-		file = fopen(path, "w");
-	else
-	{
-		rewind(f);
-		file = f;
-	}
-	if (file == NULL)
-		return -1;
-
-	prepare_header(size + 44);
-
-	fwrite(header, 44, 1, file);
-	fwrite(buffer, size, 1, file);
-
-	if (path != NULL)
-		fclose(file);
-	return 0;
-}
-
-void close_wave(void)
-{
-	free(f_buf);
-	fclose(f);
-}
-
-void prepare_header(const unsigned int size)
-{
-	int values[9] = {size - 8, 16, WAVE_FORMAT, WAVE_CHANNELS, WAVE_SAMPLE_RATE, WAVE_BYTES_PER_SECOND, WAVE_FRAME_SIZE, WAVE_BITS_PER_SAMPLE, size - 44};
-
-	memcpy(header + 4, values, 4);
-	memcpy(header + 16, values + 1, 4);
-	memcpy(header + 20, values + 2, 2);
-	memcpy(header + 22, values + 3, 2);
-	memcpy(header + 24, values + 4, 4);
-	memcpy(header + 28, values + 5, 4);
-	memcpy(header + 32, values + 6, 2);
-	memcpy(header + 34, values + 7, 2);
-	memcpy(header + 40, values + 8, 4);
-}
-
-/*funcao que captura o audio -> buffer*/
+/*funcao que captura o audio -> buffer
+Verificação dos parametros de hardware
+*/
 int capture_start(const char *device)
 {
+	printf("funcao-> capture_start\n");
 	unsigned int freq = WAVE_SAMPLE_RATE;
 	int freq_adjust_direction = 1;
 	snd_pcm_hw_params_t *hw_params = NULL;
@@ -141,6 +90,11 @@ int capture_start(const char *device)
 	}
 
 	finish = 0;
+	/*Pthread para iniciar a gravação
+	A função capture() iniciara em 
+	trhead paralela a da execução principal
+
+	*/
 	if (pthread_create(&t, NULL, (void *)capture, NULL) < 0)
 	{
 		fprintf(stderr, "Falha ao iniciar tópicos de gravação\n");
@@ -149,8 +103,39 @@ int capture_start(const char *device)
 	return 0;
 }
 
+void capture(void)
+{
+	printf("funcao-> capture\n");
+	struct block *now = NULL;
+	int r;
+	blocknumber = 0;
+	head = malloc(sizeof(struct block));
+	head->buf = NULL;
+	head->next = NULL;
+	now = head;
+	while (!finish)
+	{
+		unsigned int framenumber = FRAMES_IN_BLOCK;
+		blocknumber++;
+		now->next = malloc(sizeof(struct block));
+		now = now->next;
+		now->buf = malloc(BLOCKSIZE);
+		now->next = NULL;
+		do
+		{
+			r = snd_pcm_readi(handle, now->buf + (FRAMES_IN_BLOCK - framenumber) * (WAVE_BITS_PER_SAMPLE / 8), framenumber);
+			if (r < 0)
+				fprintf(stderr, "AVISO: Erro ao ler Áudio\n");
+			else
+				framenumber -= r;
+		} while (framenumber > 0);
+	}
+	finish = 2;
+}
+
 void capture_stop(unsigned int *size, void **buffer)
 {
+	printf("funcao-> capture_stop \n");
 	unsigned int i = 0;
 	struct block *now = NULL;
 	void **adresses = NULL;
@@ -180,6 +165,7 @@ void capture_stop(unsigned int *size, void **buffer)
 /*funcao para gravacao de audio -> disco*/
 int record(const char *device, const void *buffer, const unsigned int size)
 {
+	printf("funcao-> record\n");
 	int r = 0;
 	unsigned int freq = WAVE_SAMPLE_RATE;
 	unsigned int framenumber = size / (WAVE_BITS_PER_SAMPLE / 8);
@@ -251,65 +237,54 @@ int record(const char *device, const void *buffer, const unsigned int size)
 	return 0;
 }
 
-void get_device_list(char ****devices, unsigned int *number)
+int write_pcm(const void *buffer, const unsigned int size, const char *path)
 {
-	unsigned int i = 0;
-	void **hints = NULL;
+	FILE *file = NULL;
+	printf("funcao-> write_pcm\n");
 
-	snd_device_name_hint(-1, "pcm", &hints);
-	while (hints[i])
-		i++;
-	*number = i;
-	*devices = malloc(sizeof(char **) * i);
-	i = 0;
-	while (hints[i])
+	if (path != NULL)
+		file = fopen(path, "w");
+	else
 	{
-		char *ioid = NULL;
-		(*devices)[i] = malloc(sizeof(char *) * 3);
-		(*devices)[i][0] = snd_device_name_get_hint(hints[i], "nome");
-		(*devices)[i][1] = snd_device_name_get_hint(hints[i], "desc");
-		ioid = snd_device_name_get_hint(hints[i], "ioid");
-		if (ioid)
-			(*devices)[i][2] = ioid;
-		else
-		{
-			(*devices)[i][2] = malloc(sizeof(char) * 7);
-			strncpy((*devices)[i][2], "ambos\0", 7);
-		}
-		i++;
+		rewind(f);
+		file = f;
 	}
-	snd_device_name_free_hint(hints);
+	if (file == NULL)
+		return -1;
+
+	prepare_header(size + 44);
+
+	fwrite(header, 44, 1, file);
+	fwrite(buffer, size, 1, file);
+
+	if (path != NULL)
+		fclose(file);
+	return 0;
 }
 
-/*auxilia na captura de audio*/
-
-void capture(void)
+/*
+Prepara o cabeçalho wave
+  * Preenche o cabeçalho comparação com os valores válidos, que são especificados 
+em wave.h e o arquivo e bloco de tamanho correto, que é derivado dos parâmetros.
+  * (Const unsigned int) tamanho do arquivo
+*/
+void prepare_header(const unsigned int size)
 {
-	struct block *now = NULL;
-	int r;
-	blocknumber = 0;
-	head = malloc(sizeof(struct block));
-	head->buf = NULL;
-	head->next = NULL;
-	now = head;
-	while (!finish)
-	{
-		unsigned int framenumber = FRAMES_IN_BLOCK;
-		blocknumber++;
-		now->next = malloc(sizeof(struct block));
-		now = now->next;
-		now->buf = malloc(BLOCKSIZE);
-		now->next = NULL;
-		do
-		{
-			r = snd_pcm_readi(handle, now->buf + (FRAMES_IN_BLOCK - framenumber) * (WAVE_BITS_PER_SAMPLE / 8), framenumber);
-			if (r < 0)
-				fprintf(stderr, "AVISO: Erro ao ler Áudio\n");
-			else
-				framenumber -= r;
-		} while (framenumber > 0);
-	}
-	finish = 2;
+	printf("funcao-> prepare_header\n");
+	int values[9] = {size - 8, 16, WAVE_FORMAT, WAVE_CHANNELS, WAVE_SAMPLE_RATE, WAVE_BYTES_PER_SECOND, WAVE_FRAME_SIZE, WAVE_BITS_PER_SAMPLE, size - 44};
+
+	memcpy(header + 4, values, 4);
+	memcpy(header + 16, values + 1, 4);
+	memcpy(header + 20, values + 2, 2);
+	memcpy(header + 22, values + 3, 2);
+	memcpy(header + 24, values + 4, 4);
+	memcpy(header + 28, values + 5, 4);
+	memcpy(header + 32, values + 6, 2);
+	memcpy(header + 34, values + 7, 2);
+	memcpy(header + 40, values + 8, 4);
+
 }
+
+
 
 

@@ -32,26 +32,16 @@ taxa de gravação de 44100 (equivalente a qualidade de CDs)
 #define WAVE_BYTES_PER_SECOND (WAVE_SAMPLE_RATE * WAVE_FRAME_SIZE) //framesize * samplerate
 
 
-unsigned int read_pcm(void **buffer);
-
-void prepare_header(const unsigned int size);
+int capture_start(const char *device);
 
 void capture(void);
 
-
-int write_pcm(const void *buffer, const unsigned int size, const char *path);
-
-int capture_start(const char *device);
-
-
 void capture_stop(unsigned int *size, void **buffer);
-
 
 int record(const char *device, const void *buffer, const unsigned int size);
 
+int write_pcm(const void *buffer, const unsigned int size, const char *path);
 
-void get_device_list(char ****devices, unsigned int *number);
-
-
+void prepare_header(const unsigned int size);
 
 #endif
