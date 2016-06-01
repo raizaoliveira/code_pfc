@@ -1,6 +1,5 @@
 
 #include "link.h"
-#include "dir.h"
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
@@ -13,9 +12,6 @@
 int main(void)
 {
 	char opt;
-    system("pwd");
-	system("mkdir palavras");
-	system("mkdir waves");
 	do
 	{
 		do{
@@ -30,7 +26,7 @@ int main(void)
 				get_word(0);
 				break;
 			case 'b':
-				list();
+				system("ls palavras");
 				break;
 			case 'c':
 				usleep(200000);

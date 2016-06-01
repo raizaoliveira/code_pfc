@@ -2,9 +2,8 @@
 #define __LINK_H__
 
 #include "linklist.h"
-#include "split.h"
+#include "preprocessing.h"
 #include "compare.h"
-#include "dir.h"
 
 void get_word(int flag);
 

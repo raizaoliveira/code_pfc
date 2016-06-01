@@ -2,12 +2,12 @@
 #ifndef __COMPARE_H__
 #define __COMPARE_H__
 
-#include "frame.h"
+#include "preprocessing.h"
 
 
 /*
-  * Compara os dois determinados vectores de expressões MFCC e retorna um valor,
-  * Indicando a correlação. Quanto menor for essa, mais semelhante são os dois vectores.
+  * Compara os dois determinados vetores de expressões MFCC e retorna um valor,
+  * Indicando a correlação. Quanto menor for essa, mais semelhante são os dois vetores.
   * <<< >>> ENTRADA
   * (Mfcc_frame) mfcc_frames1 O primeiro vetor com as características MFCC
   * (Unsigned int) n1 O comprimento do segundo vector

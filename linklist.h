@@ -7,7 +7,7 @@ Universidade estadual de Mato Grosso do Sul - UEMS
 #ifndef __LINKLIST_H__
 #define __LINKLIST_H__
 
-#include "frame.h"
+#include "preprocessing.h"
 #include <dirent.h>
 
 typedef

@@ -27,10 +27,8 @@ double compare(mfcc_frame *mfcc_frames1, unsigned int n1, mfcc_frame *mfcc_frame
 		distances[i][0] = atof("Inf");
 	for (i = 0; i <= n2; i++)
 		distances[0][i] = atof("Inf");
-	/*O único valor partida válida na borda*/
 	distances[0][0] = 0;
-
-	// Calcula-se a partir de uma forma mais barata para a outra extremidade da matriz
+	
 	for (i = 1; i <= n1; i++)
 		for (j = 1; j <= n2; j++)
 		{
